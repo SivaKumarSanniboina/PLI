@@ -1,0 +1,371 @@
+LEMA07.PLI.JOBLIB       
+LEMA07.PLI.JOBLIB.BACKUP
+LEMA07.PLI.LOADLIB      
+LEMA07.PLI.SRCLIB       
+
+LEMA07.EMP.INFILE --- INPUT FILE
+
+E0001SIVA KUMARD0001200001997-10-152021-05-03SIVAKUMAR7@GMAIL.COM 
+E0002RAJA KUMARD0002300001960-10-102000-05-04RAJAKUMAR9@GMAIL.COM 
+E0003RANIKUMARID0003400001990-06-052018-02-10RANIKUMARI@GMAIL.COM 
+
+LEMA07.EMP.OUTFILE -- OUTPUT FILE
+
+E0002RAJA KUMARD0002300001960-10-102000-05-04RAJAKUMAR9@GMAIL.COM
+
+1)LEMA07.PLI.SRCLIB(EMP01)
+
+
+
+EMP01:PROC OPTIONS(MAIN) REORDER;          
+DCL DEPID CHAR(05);                        
+GET LIST(DEPID);                           
+DCL INFILE FILE RECORD INPUT;              
+DCL FILEOF BIT(1) INIT('0'B);              
+DCL 01 INREC,                              
+    05 EMPID CHAR(05),                     
+    05 EMPNAME CHAR(10),                   
+    05 DEPTID  CHAR(05),                   
+    05 SALARY  CHAR(05),                   
+    05 DATEOFBIRTH,                        
+        11 YYYY    PIC '(4)9',             
+        11 MM      PIC '(2)9',             
+        11 DD      PIC '(2)9',             
+    05 DATEOFJOIN,                         
+        11 YYYY    PIC '(4)9',             
+        11 MM      PIC '(2)9',             
+        11 DD      PIC '(2)9',             
+    05 EMAIL       CHAR(20),               
+    05 FILLER      CHAR(19);               
+DCL TRUE BIT(1) INIT ('1'B);               
+DCL FALSE BIT(1) INIT('0'B);               
+ON ENDFILE(INFILE)                         
+    FILEEOF='1'B;                          
+OPEN FILE(INFILE);                         
+READ FILE(INFILE) INTO(INREC);             
+DO WHILE(FILEEOF = FALSE);                 
+    IF INREC.DEPTID = DEPID THEN           
+    DO;                                    
+        PUT SKIP LIST(INREC);              
+    END;                                   
+    READ FILE(INFILE) INTO(INREC);         
+END;                                       
+CLOSE FILE(INFILE);                        
+END EMP01;      
+
+
+
+COMPILE ::
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID             
+//*                                                     
+//*  COMPILE A PL/I PROGRAM                             
+//*                                                     
+//PLIB    JCLLIB ORDER=(SYS1.PLI.PROCLIB)               
+//CL      EXEC IBMZCPL                                  
+//PLI.SYSIN   DD DSN=LEMA07.PLI.SRCLIB(EMP01),DISP=SHR  
+//PLI.SYSLIB  DD DSN=LEMA07.COPYLIB,DISP=SHR            
+//LKED.SYSLMOD DD DSN=LEMA07.PLI.LOADLIB(EMP01),DISP=OLD
+
+
+RUN PLI::
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID      
+//*                                              
+//*  RUN A PL/I PROGRAM                          
+//*                                              
+//STEP01  EXEC PGM=EMP01                         
+//STEPLIB  DD  DSN=LEMA07.PLI.LOADLIB,DISP=SHR   
+//INFILE   DD  DSN=LEMA07.EMP.INFILE,DISP=SHR    
+//OUTFILE  DD  DSN=LEMA07.EMP.OUTFILE,DISP=SHR   
+//SYSIN    DD *                                  
+'D0002'                                          
+/*                                               
+//SYSOUT   DD  SYSOUT=*                          
+//SYSPRINT DD  SYSOUT=*                          
+//CEEDUMP  DD  SYSOUT=*                          
+//SYSUDUMP DD  SYSOUT=*                          
+                           
+2)
+LEMA07.EMP.INFILE --- INPUT FILE
+
+E0001SIVA KUMARD0001200001997-10-152021-05-03SIVAKUMAR7@GMAIL.COM 
+E0002RAJA KUMARD0002300001960-10-102000-05-04RAJAKUMAR9@GMAIL.COM 
+E0003RANIKUMARID0003400001990-06-052018-02-10RANIKUMARI@GMAIL.COM 
+
+'LEMA07.EMP.OUTFILES'   -- OUTPUT FILE
+
+CODE ::
+
+EMP02:PROCEDURE OPTIONS(MAIN) REORDER;                   
+DCL INFILE FILE RECORD INPUT;                            
+DCL OUTFILE FILE RECORD OUTPUT;                          
+DCL FILEEOF BIT(1) INIT('0'B);                           
+DCL 01 INREC                                             
+    05 EMPID    CHAR(05),                                
+    05 EMPNAME  CHAR(10),                                
+    05 DEPID    CHAR(05),                                
+    05 SALARY   PIC '(5)9',                              
+    05 DATEOFBIRTH,                                      
+        11 YYYY    PIC '(4)9',                           
+        11 MM      PIC '(2)9',                           
+        11 DD      PIC '(2)9',                           
+    05 DATEOFJOIN,                                       
+        11 YYYY    PIC '(4)9',                           
+        11 MM      PIC '(2)9',                           
+        11 DD      PIC '(2)9',                           
+    05 EMAIL       CHAR(20),                             
+    05 FILLER      CHAR(19);                             
+DCL TRUE BIT(1) INIT('1'B);                              
+DCL FALSE BIT(1) INIT('0'B);                             
+ON ENDFILE(INFILE)                                       
+    FILEEOF='1'B;                                        
+OPEN FILE(INFILE);                                       
+OPEN FILE(OUTFILE);                                      
+READ FILE(INFILE) INTO (INREC);                          
+DO WHILE(FILEEOF = FALSE);                               
+    IF(INREC.SALARY > 10000 & INREC.SALARY < 20000) THEN 
+    DO;                                                  
+        PUT SKIP LIST(INREC);                            
+        WRITE FILE(OUTFILE) FROM (INREC);                
+    END;                                                 
+    READ FILE(INFILE) INTO(INREC);                       
+END;                                                     
+CLOSE FILE(INFILE);                                      
+END EMPO2;
+
+CCOMPILE PL/I:::
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID                  
+//*                                                          
+//*  COMPILE A PL/I PROGRAM                                  
+//*                                                          
+//PLIB    JCLLIB ORDER=(SYS1.PLI.PROCLIB)                    
+//CL      EXEC IBMZCPL                                       
+//PLI.SYSIN   DD DSN=LEMA07.PLI.SRCLIB(EMP02),DISP=SHR       
+//PLI.SYSLIB  DD DSN=LEMA07.COPYLIB,DISP=SHR                 
+//LKED.SYSLMOD DD DSN=LEMA07.PLI.LOADLIB(EMP02),DISP=OLD     
+
+
+
+RUN PL/I ::
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID       
+//*                                               
+//*  RUN A PL/I PROGRAM                           
+//*                                               
+//STEP01  EXEC PGM=EMP02                          
+//STEPLIB  DD  DSN=LEMA07.PLI.LOADLIB,DISP=SHR    
+//INFILE   DD  DSN=LEMA07.EMP.INFILE,DISP=SHR     
+//OUTFILE  DD  DSN=LEMA07.EMP.OUTFILES,DISP=SHR   
+//SYSOUT   DD  SYSOUT=*                           
+//SYSPRINT DD  SYSOUT=*                           
+//CEEDUMP  DD  SYSOUT=*                           
+//SYSUDUMP DD  SYSOUT=*                           
+
+
+3)
+
+EMP03:PROC OPTIONS(MAIN) REORDER;                   
+DCL INFILE FILE RECORD INPUT;                       
+DCL FILEEOF BIT(1) INIT('0'B);                      
+DCL 01 INREC                                        
+    05 EMPID    CHAR(05),                           
+    05 EMPNAME  CHAR(10),                           
+    05 DEPTID   CHAR(05),                           
+    05 SALARY   PIC '(5)9',                         
+    05 DATEOFBIRTH,                                 
+      11  YYYY  PIC '(4)9',                         
+      11  MM    PIC '(2)9',                         
+      11  DD    PIC '(2)9',                         
+    05 DATEOFJOIN,                                  
+      11  YYYY  PIC '(4)9',                         
+      11  MM    PIC '(2)9',                         
+      11  DD    PIC '(2)9',                         
+    05 EMAIL    CHAR(20),                           
+    05 FILLER   CHAR(19);                           
+DCL TRUE BIT(1) INIT('1'B);                         
+DCL FALSE BIT(1) INIT('0'B);                        
+ON ENDFILE(INFILE)                                  
+    FILEEOF = '1'B;                                 
+OPEN FILE(INFILE);                                  
+READ FILE(INFILE) INTO(INREC);                      
+DO WHILE(FILEEOF = FALSE);                          
+    IF INREC.DATEOFJOIN.YYYY = '2000' THEN          
+        PUT SKIP LIST(INREC.EMPID);                 
+        READ FILE(INFILE) INTO(INREC);              
+    END;                                            
+CLOSE FILE(INFILE);                                 
+END EMP03;                                          
+
+COMPILE ::
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID                  
+//*                                                          
+//*  COMPILE A PL/I PROGRAM                                  
+//*                                                          
+//PLIB    JCLLIB ORDER=(SYS1.PLI.PROCLIB)                    
+//CL      EXEC IBMZCPL                                       
+//PLI.SYSIN   DD DSN=LEMA07.PLI.SRCLIB(EMP03),DISP=SHR       
+//PLI.SYSLIB  DD DSN=LEMA07.COPYLIB,DISP=SHR                 
+//LKED.SYSLMOD DD DSN=LEMA07.PLI.LOADLIB(EMP03),DISP=OLD     
+
+
+RUN ::
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID       
+//*                                               
+//*  RUN A PL/I PROGRAM                           
+//*                                               
+//STEP01  EXEC PGM=EMP03                         
+//STEPLIB  DD  DSN=LEMA07.PLI.LOADLIB,DISP=SHR    
+//INFILE   DD  DSN=LEMA07.EMP.INFILE,DISP=SHR     
+//*OUTFILE  DD  DSN=LEMA07.EMP.OUTFILES,DISP=SHR   
+//SYSOUT   DD  SYSOUT=*                           
+//SYSPRINT DD  SYSOUT=*                           
+//CEEDUMP  DD  SYSOUT=*                           
+//SYSUDUMP DD  SYSOUT=*  
+
+
+4)  EMPO4
+
+EMP04:PROC OPTIONS(MAIN) REORDER;                  
+DCL INFILE FILE RECORD UPDATE;                     
+DCL FILEEOF BIT(1) INIT('0'B);                     
+DCL TRUE BIT(1) INIT('1'B);                        
+DCL FALSE BIT(1) INIT('0'B);                       
+DCL 01 INREC                                       
+    05 EMPID    CHAR(05),                          
+    05 EMPNAME  CHAR(10),                          
+    05 DEPTID   CHAR(05),                          
+    05 SALARY   PIC '(5)9',                        
+    05 DATEOFBIRTH,                                
+      11 YYYY   PIC '(4)9',                        
+      11 MM     PIC '(2)9',                        
+      11 DD     PIC '(2)9',                        
+    05 DATEOFJOIN,                                 
+      11 YYYY   PIC '(4)9',                        
+      11 MM     PIC '(2)9',                        
+      11 DD     PIC '(2)9',                        
+    05 EMAIL    CHAR(20),                          
+    05 FILLER   CHAR(19);                          
+ON ENDFILE(INFILE)                                 
+    FILEEOF = '1'B;                                
+OPEN FILE(INFILE);                                 
+READ FILE(INFILE) INTO(INREC);                     
+DO WHILE(FILEEOF = FALSE);                         
+    IF INREC.DATEOFJOIN.YYYY < 2016 THEN           
+    DO;                                            
+      INREC.SALARY = INREC.SALARY + 5000           
+      PUT SKIP LIST(INREC);                        
+      REWRITE FILE(INFILE) FROM(INREC);            
+    END;                                           
+    READ FILE(INFILE) INTO(INREC);                 
+END;                                               
+CLOSE FILE(INFILE);                                
+END EMP04;   
+
+
+5) OMS
+
+CODE:
+OMSPS:PROC OPTIONS(MAIN) REORDER;                    
+DCL PRODFL FILE RECORD UPDATE;                       
+DCL TRANSFL FILE RECORD INPUT;                       
+DCL SHIPFL FILE RECORD OUTPUT;                       
+DCL PENDFL FILE RECORD OUTPUT;                       
+DCL PRODEOF BIT(1) INIT('0'B);                       
+DCL TRANSEOF BIT(1) INIT('0'B);                      
+DCL TRUE BIT(1) INIT('1'B);                          
+DCL FALSE BIT(1) INIT('0'B);                         
+DCL 01 PRODREC,                                      
+    05 PRODID   PIC '(5)X',                          
+    05 PRODNAME PIC '(10)X',                         
+    05 QOH      PIC '(2)9',                          
+    05 PRICE    PIC '(5)9',                          
+    05 FILLER   PIC '(58)X';                         
+DCL 01 TRANSREC,                                     
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 FILLER   PIC '(68)X';                         
+DCL 01 SHIPREC,                                      
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 BILL     PIC '(5)9',                          
+    05 FILLER   PIC '(63)X';                         
+DCL 01 PENDREC,                                      
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 STA      PIC '(2)X',                          
+    05 FILLER   PIC '(66)X';                         
+DCL FOUND BIT(1) INIT('0'B);                         
+ON ENDFILE(PRODFL) PRODEOF = '1'B;                   
+ON ENDFILE(TRANSFL) TRANSEOF = '1'B;                 
+OPEN FILE(TRANSFL);                                                
+OPEN FILE(SHIPFL);                                                 
+OPEN FILE(PENDFL);                                                 
+READ FILE(TRANSFL) INTO(TRANSREC);                                 
+DO WHILE(TRANSEOF = FALSE);                                        
+    OPEN FILE(PRODFL);                                             
+    READ FILE(PRODFL) INTO(PRODREC);                               
+    DO WHILE(PRODEOF = FALSE);                                     
+        IF(PRODREC.PRODID = TRANSREC.PRODID) THEN                  
+        DO;                                                        
+            FOUND = '1'B;                                          
+            IF(PRODREC.QOH > TRANSREC.QREQ) THEN                   
+            DO;                                                    
+                SHIPREC.TRANSID = TRANSREC.TRANSID;                
+                SHIPREC.PRODID = TRANSREC.PRODID;                  
+                SHIPREC.QREQ = TRANSREC.QREQ;                      
+                SHIPREC.BILL = TRANSREC.QREQ * PRODREC.PRICE;      
+                WRITE FILE(SHIPFL) FROM(SHIPREC);                  
+                PRODREC.QOH = PRODREC.QOH - TRANSREC.QREQ;         
+                REWRITE FILE(PRODFL) FROM(PRODREC);                
+            END;                                                   
+            ELSE                                                   
+            DO;                                                    
+                PENDREC.TRANSID = TRANSREC.TRANSID;                
+                PENDREC.PRODID = TRANSREC.PRODID;                  
+                PENDREC.QREQ = TRANSREC.QREQ;                      
+                PENDREC.STA = 'NS';                                
+                WRITE FILE(PENDFL) FROM(PENDREC);                  
+            END;                                                   
+        END;                                                       
+        IF(FOUND = FALSE) THEN                                     
+        DO;                                                        
+            PENDREC.TRANSID = TRANSREC.TRANSID;                    
+            PENDREC.PRODID = TRANSREC.PRODID;   
+            PENDREC.QREQ = TRANSREC.QREQ;       
+            PENDREC.STA = 'NA';                 
+            WRITE FILE(PENDFL) FROM(PENDREC);   
+        END;                                    
+        ELSE                                    
+        DO;                                     
+            FOUND = '0'B;                       
+        END;                                    
+    READ FILE(PRODFL) INTO(PRODREC);            
+END;                                            
+    READ FILE(TRANSFL) INTO(TRANSREC);          
+    CLOSE FILE(PRODFL);                         
+END;                                            
+CLOSE FILE(TRANSFL);                            
+CLOSE FILE(SHIPFL);                             
+CLOSE FILE(PENDFL);                             
+END OMSPS;                                      
+
+
+PRODFILE DATA :
+
+P0001BAT       1040000
+P0002BALL      3050000
+P0003PENCIL    4020000
+
+TRANSFILE DATA:
+
+T0001P000130
+T0002P000210
+T0003P000315	                                                                                                   
+

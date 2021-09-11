@@ -1,0 +1,570 @@
+UNLOAD:::
+
+UNLOAD:PROC OPTIONS(MAIN) REOERDER;
+DCL OUTFILE FILE RECORD OUTPUT;
+DCL FILEEOF BIT(1) INIT('0'B);
+DCL 01 OUTREC,
+    05 EID    CHAR(5),
+    05 ENAME  CHAR(10), 
+    05 ESALARY   PIC '(5)9',
+    05 FILLER   CHAR(60);
+DCL TRUE BIT(1) INIT('1'B);
+DCL FALSE BIT(1) INIT('0'B);
+OPEN FILE(OUTFILE);
+EXEC SQL INCLUDE SQLCA;                                              
+EXEC SQL INCLUDE EMPLOY; 
+EXEC SQL DECLARE EMPCUR CURSOR FOR SELECT EMPID,EMPNAME,SALARY FROM EMPLOY;
+EXEC SQL OPEN EMPCUR;
+DO WHILE(SQLCODE = 0);
+    EXEC SQL FETCH EMPCUR INTO :EMPID, :EMPNAME, :SALARY;
+	IF SQLCODE = 0 THEN
+	DO;
+	    OUTREC.EID = EMPID;
+	    OUTREC.ENAME = EMPNAME;
+	    OUTREC.ESALARY = SALARY;
+	    WRITE FILE(OUTFILE) FROM(OUTREC);
+	END;
+	ELSE IF SQLCODE = 100 THEN
+	     DO;	
+	        PUT SKIP LIST("END OF THE DATA");
+	     END;
+	     ELSE
+	     DO;
+	         PUT SKIP LIST("UNLOAD UNSUCCESS");
+	     END;
+	     
+END;
+EXEC SQL CLOSE EMPCUR;
+CLOSE FILE(OUTFILE);
+END UNLOAD;
+
+
+
+DCLGEN:
+
+ /*********************************************************************/
+ /* DCLGEN TABLE(EMPLOY)                                              */
+ /*        LIBRARY(LEMA07.DCLGEN.PLI(EMPLOY))                         */
+ /*        LANGUAGE(PLI)                                              */
+ /*        APOST                                                      */
+ /* ... IS THE DCLGEN COMMAND THAT MADE THE FOLLOWING STATEMENTS      */
+ /*********************************************************************/
+ EXEC SQL DECLARE EMPLOY TABLE                                          
+           ( EMPID                          CHAR(5),                    
+             SALARY                         INTEGER,                    
+             DEPTID                         CHAR(5),                    
+             LASTUPDATED                    CHAR(5),                    
+             ALLOWANCE                      CHAR(10)                    
+           ) ;                                                          
+ /*********************************************************************/
+ /* PLI DECLARATION FOR TABLE EMPLOY                                  */
+ /*********************************************************************/
+ DCL 1 DCLEMPLOY,                                                       
+      5 EMPID    CHAR(5),                                               
+      5 SALARY   BIN FIXED(31),                                         
+      5 DEPTID   CHAR(5),                                               
+      5 LASTUPDATED  CHAR(5),                                           
+      5 ALLOWANCE  CHAR(10);                                            
+ /*********************************************************************/
+ /* THE NUMBER OF COLUMNS DESCRIBED BY THIS DECLARATION IS 5          */
+ /*********************************************************************/
+
+
+RUN JCL:
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID          
+//*                                                  
+//*  PLI DB2 RUN JCL                                 
+//*                                                  
+//STEP01   EXEC PGM=IKJEFT01,                        
+//             DYNAMNBR=20,REGION=4096K              
+//STEPLIB  DD  DISP=SHR,DSN=DSNA10.DBAG.SDSNEXIT     
+//         DD  DISP=SHR,DSN=DSNA10.SDSNLOAD          
+//OUTFILE  DD  DSN=LEMA07.PLI.UNLOAD.OUTFILE,DISP=SHR
+//SYSPRINT DD  SYSOUT=*                              
+//SYSTSPRT DD  SYSOUT=*                              
+//SYSUDUMP DD  SYSOUT=*                              
+//SYSTSIN  DD  *                                     
+DSN SYSTEM (DBAG   )                                 
+  RUN PROGRAM   (UNLOAD) -                           
+      PARM ('E0001')    -                            
+      PLAN      (LEMA07A ) -                         
+      LIBRARY   ('LEMA07.LOADLIB')                   
+END                                                  
+/*                                                   
+//SYSOUT   DD  SYSOUT=*                              
+
+
+
+
+OUTPUT IN OUTPUTFILE ::
+
+E000120000D00012020 NULL
+E000218000D00021999 2000
+E000330000D00022021 3000
+E000440000D00042020 NULL
+
+
+13)Load::::
+
+INFILE DATA::
+
+S0005,SIVA KUMAR,2020/10/20,MR001,20000,BR001,  
+S0007,RANIKUMARI,2020-10/20,MR001,30000,BR002,  
+S0006,RAJA KUMAR,1990/10/20,MR002,40000,BR003,  
+S0009,KIRANKUMAR,2020/10/20,MR001,200OO,BR001,
+
+PLI CODE :
+
+PLILOAD:PROC OPTIONS(MAIN) REORDER;
+DCL INFILE FILE RECORD INPUT;
+DCL FILEEOF BIT(1) INIT('0'B);
+DCL TRUE BIT(1) INIT('1'B);
+DCL FALSE BIT(1) INIT('0'B);
+DCL 01 INRECREC,
+         05 ALLSAL PIC '(46)X',
+         05 FILLER PIC '(34)X';
+DCL SALESID    	PIC '(05)X';
+DCL SALESNAME  	PIC '(10)X';
+DCL DOJ 	PIC '(10)X';
+DCL MANAGER    	PIC '(05)X';
+DCL BRCODE 	PIC '(05)X';
+DCL SALARY     	PIC '(05)9';
+DCL TEMP1   FIXED BIN INIT(1);
+DCL TEMP2   FIXED BIN INIT(1);
+DCL P1 FIXED BIN INIT(1);
+DCL P2 FIXED BIN INIT(1);
+EXEC SQL INCLUDE SQLCA;
+EXEC SQL INCLUDE SALESREP;
+ON ENDFILE(INFILE)  FILEEOF = '1'B;
+OPEN FILE(INFILE);
+READ FILE(INFILE) INTO(INREC);
+DO WHILE(FILEEOF = FALSE);
+         P1 = 1;
+         P2 = 1;
+	 P1 = INDEX(INREC.ALLSAL,',',P1);
+         SALESID = SUBSTR(INREC.ALLSAL,P2,P1-P2);
+         P2=P1 + 1;
+         P2 = INDEX(INREC.ALLSAL,',',P1+1);
+         SALESNAME = SUBSTR(INREC.ALLSAL,P2,P1-P2);
+         P2 = P1 +1;
+         P1 = INDEX(SALESREC.ALLSAL,',',P1+1);
+         DOJ = SUBSTR(INREC.ALLSAL,P2,P1-P2);
+         P2=P1 + 1;
+         P2 = INDEX(INREC.ALLSAL,',',P1+1);
+         MANAGER = SUBSTR(INREC.ALLSAL,P2,P1-P2);
+         P2 = P1 +1; 
+         P1 = INDEX(INREC.ALLSAL,',',P1+1);
+         BRCODE = SUBSTR(INREC.ALLSAL,P2,P1-P2);
+         P2 = P1 +1; 
+         P2 = INDEX(INREC.ALLSAL,',',P1+1);
+         SALARY = SUBSTR(INREC.ALLSAL,P2,P1-P2);
+         P2 = P1 +1;
+ 	 IF VALID(SALARY) & SALARY > 0 THEN
+         DO;
+              TEMP1 = SEARCH(BRCODE,'B');
+              TEMP2 = SEARCH(BRCODE,'R');
+              IF TEMP1 = 1 & TEMP2 = 2 THEN
+              DO;
+                  TEMP1 = TALLY(DOJ,'/');
+                  TEMP2 = MAXLENGTH(DOJ);
+                  IF TEMP1 =2 & TEMP2 =10 THEN
+                  DO;
+                       EXEC SQL
+                           INSERT INTO SALESREP VALUES(:SALESID,
+                           :SALESNAME, :DOJ, :MANAGER, :BRCODE,
+                           :SALARY);
+                       IF SQLCODE = 0 THEN
+                             PUT SKIP LIST('INSERTED',SALESID);
+                       ELSE
+                             PUT SKIP LIST('UNSUCCESS',SQLCODE);
+                  END;
+              END;
+         END;
+         READ FILE(INFILE) INTO(INREC);
+END;
+CLOSE FILE(INFILE);
+END PLILOAD;
+
+
+8)
+
+ VALID:PROC OPTIONS(MAIN) REORDER;
+ DCL EMPFILE FILE RECORD INPUT;
+ DCL EMPOUTFL FILE RECORD OUTPUT;
+ DCL 01 EMPREC,
+     05 EMPID PIC '(4)X',
+	05 DOB    PIC '(10)X',
+	05 DOJ    PIC '(10)X',
+	05 EMAIL  PIC '(20)X',
+	05 SALARY PIC '(5)9',
+	05 FILLER PIC '(31)X';
+ DCL RDCOUNT FIXED BIN;
+ DCL TRUE  BIT(1) INIT('1'B);
+ DCL FALSE BIT(1) INIT('0'B);
+ DCL FILEEOF BIT(1) INIT ('0'B);
+ ON ENDFILE(EMPFILE)
+          FILEEOF='1'B;
+ DCL TEMP  FIXED BIN;
+ DCL TEMP1 FIXED BIN;
+ DCL TEMP2 FIXED BIN;
+ DCL FOUND BIT(1) INIT('0'B);
+ OPEN FILE(EMPFILE);
+ OPEN FILE(EMPOUTFL);
+ READ FILE (EMPFILE) INTO (EMPREC);
+ DO WHILE(FILEEOF = FALSE);
+        IF(DOJ > DOB) THEN
+        DO;
+            TEMP = SEARCH(EMPREC.DOJ,'/');
+            IF(TEMP = 3) THEN
+            DO;
+                TEMP=SEARCH(EMPREC.DOJ,'/',TEMP+1);
+                IF(TEMP=6) THEN
+                DO;
+                    TEMP=TALLY(EMPREC.EMAIL,'@');
+                    IF(TEMP=1) THEN
+                    DO;
+                        TEMP=SEARCH(EMPREC.EMAIL,'@');
+                        TEMP1=SEARCH(EMPREC.EMAIL,'.COM');
+                  	IF(TEMP < TEMP1 & (TEMP1= TEMP)>1) THEN
+                  	DO;
+                    	    TEMP=SEARCH(EMPREC.EMAIL,'.COM');
+                    	    TEMP1=MAXLENGTH(EMPREC.EMAIL)-TEMP);
+			    IF((MAXLENGTH(EMPREC.EMAIL)-TEMP)=TEMP1) THEN
+                            DO;
+				TEMP=TEMP1=TEMP2=0;
+				TEMP=SEARCH(EMPREC.EMAIL,'*');
+				TEMP1=SEARCH(EMPREC.EMAIL,'!');
+				TEMP2=SEARCH(EMPREC.EMAIL,'%');
+				IF(TEMP=TEMP1=TEMP2=0) THEN
+				DO;
+				    FOUND='1',B;
+				END; 	
+			    END;
+                        END;
+                    END;
+                END;
+	    END;
+        END;
+        IF(FOUND=FALSE)THEN
+	    DO;
+	       WRITE FILE (EMPOUTFL) FROM (EMPREC);
+	    END;
+        ELSE
+        DO;
+            FOUND='0'B;
+        END;
+        READ FILE(EMPFILE) INTO (EMPREC);
+    END;
+ CLOSE FILE(EMPFILE);
+ CLOSE FILE(EMPOUTFL);
+ END VALID;
+
+
+
+
+OMSDB::
+
+  OMSDB:PROC OPTIONS(MAIN) REORDER; 
+  DCL PRODREC FILE RECORD UPDATE;
+  DCL TRNSFL FILE RECORD INPUT;                                        
+  DCL SHIPFL FILE RECORD OUTPUT;                                       
+  DCL PENDFL FILE RECORD OUPUT; 
+  DCL 01 PRODREC,                                      
+    05 PRODID   PIC '(5)X',                          
+    05 PRODNAME PIC '(10)X',                         
+    05 QOH      PIC '(2)9',                          
+    05 PRICE    PIC '(5)9',                          
+    05 FILLER   PIC '(58)X';                         
+  DCL 01 TRANSREC,                                     
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 FILLER   PIC '(68)X';                         
+  DCL 01 SHIPREC,                                      
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 BILL     PIC '(5)9',                          
+    05 FILLER   PIC '(63)X';                         
+  DCL 01 PENDREC,                                      
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 STA      PIC '(2)X',                          
+    05 FILLER   PIC '(66)X';                 
+  DCL FOUND BIT(1) INIT('O'B);                                                
+  OPEN FILE(TRANSFL);                                                  
+  OPEN FILE(SHIPFL);                                                   
+  OPEN FILE(PENDFL);                                                   
+  READ FILE(TRANSFL) INTO(TRANSREC);                                   
+  DO WHILE(SQLCODE = 0);                                           
+       EXEC SQL INCLUDE SQLCA;                                         
+       EXEC SQL INCLUDE PRODUCT;                                       
+       EXEC SQL SELECT PRODUCTCODE,PRODUCTNAME,QOH,PRICE INTO          
+               :PRODUCTCODE, :PRODUCTNAME, :QOH, :PRICE FROM PRODUCT   
+       IF SQLCODE = 0 THEN                                              
+            IF(PRODUCTCODE = TRANSREC.PRODID) THEN             
+            DO;
+	        FOUND='1'B;                                                        
+		IF(PRODUCT.QOH > TRANSREC.QRED) THEN            
+                DO;                                             
+                    SHIPREC.TRANSID = TRANSREC.TRANSID;         
+                    SHIPREC.PRODID = TRANSREC.PRODID;           
+                    SHIPREC.QRED = TRANSREC.QRED;               
+                    SHIPREC.BILL = TRANSREC.QRED * PRODUCT.QOH; 
+                    WRITE FILE(SHIPFL) FROM(SHIPREC);           
+                    EXEC SQL UPDATE PRODUCT SET                 
+                    PRODUCT.QOH = PRODUCT.QOH - TRANSREC.QRED;  
+                END;                                            
+                ELSE                                            
+                DO;                                             
+                    PENDREC.TRANSID = TRANSREC.TRANSID;         
+                    PENDREC.PRODID = TRANSREC.PORDID;           
+                    PENDREC.QRED = TRANSREC.QRED;               
+                    PENDREC.STA ='NS';                          
+                    WRITE FILE(PENDFL) FROM(PENDREC);           
+                END;                                            
+            END;                                                  
+               IF (FOUND = FALSE) THEN                        
+               DO;                                              
+                   PENDREC.TRANSID = TRANSREC.TRANSID;          
+                   PENDREC.PRODID = TRANSREC.PRODID;            
+                   PENDREC.QRED = TRANSREC.QRED;                
+                   PENDREC.STA = 'NA';                          
+                   WRITE FILE(PENDFL) FROM(PENDREC);            
+               END;                                             
+               ELSE                                             
+               DO;                                              
+                   FOUND = '0'B;                                
+               END;                                            
+       END;                                                       
+       ELSE                                                       
+       DO;                                                        
+          PUT SKIP LIST('PROBLEM',SQLCODE);                       
+       END; 
+       READ FILE(TRANSFL) INTO(TRANSREC);                                                      
+ END;                                                            
+ CLOSE FILE(TRANSFL);  
+ CLOSE FILE(SHIPFL);   
+ CLOSE FILE(PENDFL);   
+ END OMSDB;
+
+
+
+
+
+OMSVSAM::::
+
+ OMSVSAM:PROC OPTIONS (MAIN) REORDER:                 
+ DCL PRODFL FILE RECORD UPDATE DIRECT KEYED ENVIRONMENT(VSAM);
+ DCL TRANSFL FILE RECORD INPUT:                       
+ DCL SHIPFL FILE RECORD OUTPUT:                       
+ DCL PENDFL FILE RECORD OUTPUT:                       
+ DCL 01 PRODREC,                                      
+    05 PRODID   PIC '(5)X',                          
+    05 PRODNAME PIC '(10)X',                         
+    05 QOH      PIC '(2)9',                          
+    05 PRICE    PIC '(5)9',                          
+    05 FILLER   PIC '(58)X';                         
+  DCL 01 TRANSREC,                                     
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 FILLER   PIC '(68)X';                         
+  DCL 01 SHIPREC,                                      
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 BILL     PIC '(5)9',                          
+    05 FILLER   PIC '(63)X';                         
+  DCL 01 PENDREC,                                      
+    05 TRANSID  PIC '(5)X',                          
+    05 PRODID   PIC '(5)X',                          
+    05 QREQ     PIC '(2)9',                          
+    05 STA      PIC '(2)X',                          
+    05 FILLER   PIC '(66)X';               
+ DCL TRANSEOF BIT(1) INIT('0'B);                      
+ DCL TRUE  BIT(1) INIT('1'B);                          
+ DCL FALSE BIT(1) INIT('0'B);                         
+ DCL FOUND BIT(1) INITC('O'B);                        
+ DCL KEYFLAG BIT(1) INIT('1'B);                       
+ ON ENDFILE(TRANSFL) TRANSEOF  = '1'B;  
+ ON KEY(PRODFL)           
+ BEGIN;
+     IF (ONCODE()=51) THEN                                        
+         FOUNDFLAG = '0'B;                                    
+     END;                                                                
+  OPEN FILE (TRANSFL);                                               
+  OPEN FILE (PENDFL);                                               
+  OPEN FILE (SHIPFL);                                               
+  READ FILE(TRANSFL) INTO (TRANSREC)                                 
+  DO WHILE (TRANFLAG = FALSE)                                         
+      OPEN FILE (PRODFL) UPDATE DIRECT KEYED;                       
+         FOUNDFLAG='0'B;                                              
+         READ FILE(PRODFL) INTO (PRODREC) KEY(TRANSREC_PRODID)        
+         IF (FOUNDFLAG = 1) THEN                                  
+         DO;                                                          
+              IF (PRODREC.QOH > TRANSREC.QREQ) THEN                
+              DO;                                                     
+                   SHIPREC.TRANSID = TRANREC.TRANSID;                      
+                   SHIPREC.PRODID = TRANREC.PRODID:                      
+                   SHIPREC.QREQ = TRANREC.QREQ;                 
+                   SHIPREC. BILL = TRANREC.QREQ PRODREC_PRICE;   
+                   SHIPREC.FILLER='';                                
+                   WRITE FILE (SHIPFL) FROM (SHIPREC);             
+                   PRODREC.QOH = PRODREC.QOH - TRANSREC.QREQ;       
+                   REWRITE FILE (PRODFL) FROM (PRODREC)            
+                                      KEY (TRANSREC.PRODID);             
+              END;                                                    
+              ELSE;                                                   
+              DO;                                                     
+                     PEND_REC.TID = TRAN_REC.TID;                     
+                     PEND_REC.PID = TRAN_REC.PID;                     
+                     PEND_REC.QTYREQ TRAN_REC.QTYREQ;                 
+                     PEND_REC.STA = 'NS';                             
+                     PEND_REC.FILLER=' ';                             
+                     WRITE FILE(PENDFILE) FROM (PEND_REC);            
+              END;                                                    
+         END; 
+	 IF (FOUND = FALSE) THEN                                                        
+         DO;                                                          
+             PENDREC.TRANSID =  TRANSREC.TRANSID;                                                          
+             PENDREC.PRODID  =  TRANSREC.PRODID:        
+             PENDREC.QREQ = TRANSREC.QREQ;                
+             PENDREC.STA = 'NA';                          
+             PENDREC.FILLER = " ";                        
+             WRITE FILE (PENDFL) FROM (PENDREC);
+	     FOUND= '0'B;            
+        END;                                              
+        CLOSE FILE(PRODFL);                                                                      
+        READ FILE(TRANSFL) INTO (TRANSREC); 
+	            
+  END;                                                    
+  CLOSE FILE(TRANSFL);                                    
+  CLOSE FILE(SHIPFL);                                     
+  CLOSE FILE(PENDFL);                                     
+  END OMSVSAM;
+
+
+
+10)
+
+CONFFILE:-
+
+AS2212	amit.varma@syntelindia.com	9875593583
+IS9871	ketan.mishra@ibm.com		9422565987
+AS6756	aman.shastri@syntelindia.com	9889564123
+IS9765	aparna.kulkarni@ibm.com		9421554750
+
+
+EMP-SYNTEL (Output File1):
+
+INITIAL-NAME	CONTACT
+amit		9875593583
+Aman		9889564123
+
+
+EMP-IBM (Output File2):
+
+INITIAL-NAME	CONTACT
+ketan		9422565987
+aparna		9421554750
+
+
+
+PLI code ::
+
+CONFFILE:PROC OPTIONS(MAIN) REORDER;
+DCL INFILE FILE RECORD INPUT;
+DCL SYNTELFL FILE RECORD OUTPUT;
+DCL IBMFL FILE RECORD OUTPUT;
+DCL EOF   BIT(1) INIT('0'B);
+DCL TRUE  BIT(1) INIT('1'B);
+DCL FALSE BIT(1) INIT('0'B);
+DCL FIRSTNAME PIC '(10)X';
+DCL SURNAMME  PIC '(10)X';
+DCL COMPANY   PIC '(20)X';
+DCL 01 INREC,
+        05 EMPID    PIC '(5)X';
+        05 EMAIL    PIC  '(40)X';
+        05 CONTACT  PIC '(40)X';
+        05 FILLER   PIC '(25)X';
+DCL 01 SYNTELREC,
+        05 FIRSTNAME  PIC '(10)X'; 
+        05 CONTACT    PIC '(10)X';
+DCL 01 IBMREC,
+        05 FIRSTNAME  PIC '(10)X';
+        05 CONTACT    PIC '(10)X';
+DCL P1 FIXED BIN INIT(1);
+DCL P2 FIXED BIN INIT(1);
+ON ENDFILE(INFILE) EOF ='1'B;
+OPEN FILE (INFILE);
+OPEN FILE (SYNTELFL);
+OPEN FILE (IBMFL);
+READ  FILE (INFILE) INTO (INREC);
+DO WHILE(EOF = FALSE)
+   PUT SKIP LIST(INREC);
+   P1 = 1;
+   P2 = 1;
+P1 = INDEX(CONREC.EMAIL,'.',P1);
+FIRSTNAME = SUBSTRING (INREC.EMAIL,P2,P1-P2);
+P2=P1 + 1;
+P1=INDEX(INREC.EMAIL,'@',P1 + 1);
+SURNAME=SUBSTRING(INREC.EMAIL,P2,P1-P2);
+P2 = P1 + 1;
+P1=INDEX(INREC.EMAIL,'.'P1+1);
+COMPANY = SUBSTRING(INREC.EMAIL,P2,P1-P2);
+SELECT(COMPANY);
+     WHEN('SYNTELINDIA')
+     DO;
+       SYNTELREC.FIRSTNAME = FIRSTNAME;
+       SYNTELREC.CONTACT = SYNTELREC.CONTACT;
+       SYNTELREC.FILLER=' ';
+       WRITE FILE(SYNTELFL) FROM (SYNTELREC);
+   END;
+   WHEN('IBM')
+     DO;
+       IBMREC.FIRSTNAME = FIRSTNAME;
+       IBMREC.CONTACT = IBMREC.CONTACT;
+       IBMREC.FILLER=' ';
+       WRITE FILE(IBMFL) FROM (IBMREC);
+   END;
+END;
+READ FILE(INFILE) INTO (INREC);
+END;
+CLOSE FILE(INFILE);
+CLOSE FILE(SYNTELFL);
+CLOSE FILE(IBMFL);
+END MAIL;
+
+
+
+NULL INDICATOR::
+
+
+NULLIND:PROC OPTIONS(MAIN) REORDER;                                 
+ DCL INFILE FILE RECORD INPUT;                                       
+ DCL 01 INREC,                                                       
+     05 EMPID     CHAR(05),                                          
+     05 EMPNAME   CHAR(10),                                          
+     05 SALARY    FIXED DECIMAL(7,2),                                
+     05 ALLOWANCE FIXED BIN(15),                                     
+     05 FILLER    CHAR(52);                                          
+ DCL FLEOF        BIT(1) INIT('0'B);                                 
+ DCL ALLOW_IND    FIXED BIN(15) INIT(-1);                            
+ ON ENDFILE                                                          
+    FLEOF = '1'B;                                                    
+ EXEC SQL INCLUDE SQLCA;                                             
+ EXEC SQL INCLUDE EMPLOY;                                            
+ OPEN FILE(INFILE);                                                  
+ READ FILE(INFILE) INTO(INREC);                                      
+ DO WHILE(FLEOF = '0'B);                                             
+     EXEC SQL INSERT INTO EMPLOY VALUES(:INREC.EMPID,:INREC.EMPNAME, 
+              :INREC.SALARY,INREC.ALLOWANCE:ALLOW_INC)               
+     IF SQLCODE = 0 THEN                                             
+         PUT SKIP LIST('INSERT DONE');                               
+     ELSE                                                            
+         PUT SKIP LIST('ERROR',SQLCODE);                             
+ END NULLIND.
+   

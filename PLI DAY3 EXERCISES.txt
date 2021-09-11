@@ -1,0 +1,110 @@
+sales exercise:
+
+INFILE DATA :
+
+S0001ARUN      NORTH ÄÏÐ  
+S0001ARUN      SOUTH Á    
+S0001ARUN      EAST QÎ    
+S0001ARUN      WEST IÎ    
+S0001ARUN      NORTH Î Æ  
+S0002BALA      NORTHÎØ    
+S0002BALA      EAST ÁÅH@  
+S0002BALA      SOUTH ÁÇÆ  
+
+S0001ARUN      NORTH1234578
+S0001ARUN      SOUTH2345032
+S0001ARUN      EAST 9876032
+S0001ARUN      WEST 8976032
+S0001ARUN      NORTH3456089
+S0002BALA      NORTH5670000
+S0002BALA      EAST 4567887
+S0002BALA      SOUTH2345689
+
+
+6)
+code:
+
+SALES1:PROC OPTIONS(MAIN) REORDER;               
+DCL SID CHAR(5);                                 
+DCL INFILE FILE RECORD INPUT;                    
+DCL FILEEOF BIT(1) INIT('0'B);                   
+DCL 01 INREC,                                    
+    05 SALESID    CHAR(5),                       
+    05 SALESMANNAME CHAR(10),                    
+    05 SALESAREA   CHAR(5),                      
+    05 SALESAMOUNT PIC '(5)9V(2)9',              
+    05 FILLER      CHAR(53);                     
+DCL TOTALAMOUNT FIXED DECIMAL(9,2);              
+DCL TEMPSUM        FIXED DECIMAL(9,2);           
+DCL TRUE BIT(1) INIT('1'B);                      
+DCL FALSE BIT(1) INIT('0'B);                     
+ON ENDFILE(INFILE)                               
+    FILEEOF='1'B;                                
+OPEN FILE(INFILE);                               
+READ FILE(INFILE) INTO(INREC);                   
+SID = INREC.SALESID;                             
+TEMPSUM = INREC.SALESAMOUNT;                     
+DO WHILE(FILEEOF = FALSE);                       
+    IF INREC.SALESID = SID THEN                  
+        TEMPSUM = TEMPSUM + INREC.SALESAMOUNT;   
+    ELSE                                         
+    DO;                                          
+        PUT SKIP LIST(SID,'-',TEMPSUM);          
+        SID = INREC.SALESID;                     
+        TEMPSUM = INREC.SALESAMOUNT;             
+    END;                                         
+        READ FILE(INFILE) INTO(INREC);           
+END;                                             
+    PUT SKIP LIST(SID,'-',TEMPSUM);              
+CLOSE FILE(INFILE);                              
+END SALES1;                                      
+
+Spoole area result:
+
+S0001                   -                          271223.41 
+S0002                   -                          125835.76 
+
+7)WMPLOYS WHO COVERD AREAS
+CODE:
+
+SALES2:PROC OPTIONS(MAIN) REORDER;             
+DCL INFILE FILE RECORD INPUT;                  
+DCL SID CHAR(5);                               
+DCL COUNTID PIC '(2)9';                        
+DCL FILEEOF BIT(1) INIT('0'B);                 
+DCL 01 INREC,                                  
+    05 SALESID    CHAR(5),                     
+    05 SALESMANNAME  CHAR(10),                 
+    05 SALESAREA  CHAR(5),                     
+    05 SALESAMOUNT FIXED DECIMAL(5,2),         
+    05 FILLER     CHAR(57);                    
+DCL TRUE BIT(1) INIT('1'B);                    
+DCL FALSE BIT(1) INIT('0'B);                   
+ON ENDFILE(INFILE)                             
+    FILEEOF='1'B;                              
+OPEN FILE(INFILE);                             
+READ FILE(INFILE) INTO(INREC);                 
+SID = INREC.SALESID;                           
+COUNTID = 0;                                   
+DO WHILE(FILEEOF = FALSE)                      
+    IF SID = INREC.SALESID THEN                
+        COUNTID = COUNTID + 1;                 
+    ELSE                                       
+    DO;                                        
+        IF COUNTID > 4 THEN                    
+            PUT SKIP LIST(SID);                
+        SID = INREC.SALESID;                   
+        COUNTID = 1;                           
+    END;                                       
+    READ FILE(INFILE) INTO(INREC);             
+END;                                           
+CLOSE FILE(INFILE);                            
+END SALES2;                                    
+
+
+OUTPUT:
+
+E0001
+
+
+

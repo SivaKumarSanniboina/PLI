@@ -1,0 +1,39 @@
+1)
+code :
+
+PLIDB1:PROC(EID) OPTIONS(MAIN);                                      
+DCL EID CHAR(5) VAR;                                                 
+PUT SKIP LIST('RECEIVED -',EID);                                     
+EXEC SQL INCLUDE SQLCA;                                              
+EXEC SQL INCLUDE EMPLOY;                                             
+EXEC SQL SELECT SALARY INTO :SALARY FROM EMPLOY WHERE EMPID=:EID;    
+IF SQLCODE = 0 THEN                                                  
+    PUT SKIP LIST(SALARY);                                           
+ELSE                                                                 
+    PUT SKIP LIST('ERROR',SQLCODE);                                  
+END PLIDB1;   
+
+RUN JCL:
+
+//LEMA07D JOB MSGLEVEL=(1,1),NOTIFY=&SYSUID                
+//*                                                        
+//*  PLI DB2 RUN JCL                                       
+//*                                                        
+//STEP01   EXEC PGM=IKJEFT01,                              
+//             DYNAMNBR=20,REGION=4096K                    
+//STEPLIB  DD  DISP=SHR,DSN=DSNA10.DBAG.SDSNEXIT           
+//         DD  DISP=SHR,DSN=DSNA10.SDSNLOAD                
+//SYSPRINT DD  SYSOUT=*                                    
+//SYSTSPRT DD  SYSOUT=*                                    
+//SYSUDUMP DD  SYSOUT=*                                    
+//SYSTSIN  DD  *                                           
+DSN SYSTEM (DBAG   )                                       
+  RUN PROGRAM   (PLIDB1) -                                 
+      PARM ('E0001')    -                                  
+      PLAN      (LEMA07A ) -                               
+      LIBRARY   ('LEMA07.LOADLIB')                         
+END                                                        
+/*                                                         
+//SYSOUT   DD  SYSOUT=*                                    
+
+                                                       
